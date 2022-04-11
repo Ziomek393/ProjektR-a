@@ -6,6 +6,8 @@ library(readxl)
 library(tidyr)
 library(ggplot2)
 library(forcats)
+library(RColorBrewer)
+
 
 roses <- read_sav("ROSES.sav")
 woj <- read.csv2("woj.csv", fileEncoding = "UTF-8") # Ramka znaleziona w internecie z miastami z przypisanymi województwami
@@ -48,9 +50,9 @@ roses_q <- left_join(r2, roses, by="ResponseId") # Dodanie do roses kolumny woje
 
 ### 3 wykres:
 
-# rosesw3<- roses_q %>%
-#   select(Q13_1:Q13_10, Województwo, ResponseId) %>%
-#   group_by(Województwo) %>%
+# rosesw3<- roses_q %>% 
+#   select(Q13_1:Q13_10, Województwo, ResponseId) %>% 
+#   group_by(Województwo) %>% 
 #   mutate(rankQ1 = mean(Q13_1, na.rm = TRUE),
 #          rankQ2 = mean(Q13_2, na.rm = TRUE),
 #          rankQ3 = mean(Q13_3, na.rm = TRUE),
@@ -62,8 +64,8 @@ roses_q <- left_join(r2, roses, by="ResponseId") # Dodanie do roses kolumny woje
 #          rankQ9 = mean(Q13_9, na.rm = TRUE),
 #          rankQ10 = mean(Q13_10, na.rm = TRUE)) %>%
 #   select(rankQ1:rankQ10, Województwo) %>%
-#   mutate(maks = max(rankQ1:rankQ10)) %>%
-#   distinct(Województwo, .keep_all = TRUE) %>%
+#   mutate(maks = max(rankQ1:rankQ10)) %>% 
+#   distinct(Województwo, .keep_all = TRUE) %>% 
 #   filter(is.na(Województwo)==FALSE)
 
 # opcja globalna jakbyśmy stwierdzili że województwa nas nie obchodzą
@@ -102,8 +104,7 @@ rosesw3_1 %>%
   ggtitle("Popularność wybranych pomocy naukowych")
 
 
-# Wykres 2 a) 
-# dodać skrajne pomoce(najbardziej wpływająca, i najmniej)
+# Wykres 2 a)
 
 
 rosesw2 <- roses_q %>%
@@ -125,14 +126,15 @@ rosesw2_z <- roses_q %>%
   ungroup() %>% 
   mutate(wsp_z = rowMeans(select(.,starts_with("Q")), na.rm = TRUE)) %>% 
   select(ResponseId, wsp_z)
-  
+
 rosesw2_xd <- bind_cols(rosesw2, rosesw2_z) %>%
   group_by(Q13_4) %>% 
   mutate(wsp_z_med_4 = median(wsp_z)) %>% 
   group_by(Q13_6) %>% 
   mutate(wsp_z_med_6 = median(wsp_z)) %>% 
-  ungroup()
+  ungroup() %>% 
   filter(is.na(wsp_pom) == FALSE | is.na(wsp_z) == FALSE)
+
 
 rosesw2_xd %>% 
   ggplot(aes(x = wsp_pom)) +
@@ -148,20 +150,20 @@ rosesw2_xd %>%
                       values = c("blue", "green", "red")) +
   labs(x = "Stopień użycia pomocy \nnaukowych", y = "Zainteresowanie nauką")
 
-rosesw2_xd %>% 
-  group_by(Q13_10) %>% 
-  mutate(wsp_z_med = median(wsp_z)) %>% 
-  ggplot(aes(x = Q13_10, y = wsp_z_med)) +
-  geom_line() +
-  coord_cartesian(ylim = c(2,3))
+# rosesw2_xd %>% 
+#   group_by(Q13_10) %>% 
+#   mutate(wsp_z_med = median(wsp_z)) %>% 
+#   ggplot(aes(x = Q13_10, y = wsp_z_med)) +
+#   geom_line() +
+#   coord_cartesian(ylim = c(2,3))
 
 
 # Wykres 1
 
 
-polandmap <- read_sf("Wojewodztwa.shp")
-
-polandmap <- polandmap %>% select(name = JPT_NAZWA_, geometry) %>% arrange(name)
+polandmap <- read_sf("wojewodztwa.shp") %>% 
+  select(nazwa = JPT_NAZWA_, geometry) %>% 
+  arrange(nazwa)
 
 # ggplot(data = polandmap) + geom_sf()
 
@@ -172,12 +174,15 @@ tmp <- roses_q %>% ungroup() %>%
   group_by(Województwo) %>% 
   summarise(MeanWoj = mean(Meanvalue, na.rm = TRUE)) %>% 
   distinct(Województwo, .keep_all = TRUE) %>% 
+  arrange(Województwo) %>% 
   mutate(Województwo = str_to_lower(Województwo)) %>% 
-  inner_join(polandmap, by = c("Województwo" = "name"))
-    
-tmp <- st_as_sf(tmp)
+  inner_join(polandmap, by = c("Województwo" = "nazwa")) %>% 
+  st_as_sf()
 
-ggplot(data = tmp) + geom_sf(aes(fill = MeanWoj))
+ggplot(data = tmp) + geom_sf(aes(fill = MeanWoj)) + 
+  scale_fill_gradient(low = "skyblue1", high = "skyblue4", 
+                      name = "Współczynnik wykorzystania\n pomocy naukowych")
+  
 
 
 ### Plan na Rurze ###
@@ -188,11 +193,5 @@ ggplot(data = tmp) + geom_sf(aes(fill = MeanWoj))
 # 2. Punktowy - "x" zainteresowanie uczniów przedmiotami, "y" wykorzystanie pomocy (a. jednostki, b.woj)
 # 3. Słupkowy - ranking pomocy naukowych (Q13)
 
-roses_q %>% 
-ggplot(aes(x = as.numeric(LocationLatitude), y = as.numeric(LocationLongitude))) +
-  geom_point() +
-  labs(x = NULL, y = NULL) +
-  scale_x_continuous(n.breaks = 10) +
-  scale_y_continuous(n.breaks = 10) +
-  coord_cartesian(xlim = c(49,55), ylim = c(13,25))
+
 
